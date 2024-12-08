@@ -36,6 +36,70 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     }
 }
 
+// Function to set up index.html, views.py, and urls.py
+async function setupIndexHtml(workspaceFolder: string, projectName: string, appName: string) {
+    const appDir = path.join(workspaceFolder, projectName, appName);
+
+    try {
+        // Create a templates folder and index.html
+        const templatesDir = path.join(appDir, 'templates', appName);
+        fs.mkdirSync(templatesDir, { recursive: true });
+
+        const indexHtmlPath = path.join(templatesDir, 'index.html');
+        const indexHtmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to ${appName}</title>
+</head>
+<body>
+    <h1>Hello from ${appName}!</h1>
+</body>
+</html>
+        `;
+        fs.writeFileSync(indexHtmlPath, indexHtmlContent, 'utf8');
+
+        // Update views.py
+        const viewsFilePath = path.join(appDir, 'views.py');
+        const viewsContent = `
+from django.shortcuts import render
+
+def index(request):
+    return render(request, '${appName}/index.html')
+        `;
+        fs.writeFileSync(viewsFilePath, viewsContent, 'utf8');
+
+        // Update urls.py
+        const urlsFilePath = path.join(appDir, 'urls.py');
+        const urlsContent = `
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.index, name='index'),
+]
+        `;
+        fs.writeFileSync(urlsFilePath, urlsContent, 'utf8');
+
+        // Register the app's urls.py in the project's urls.py
+        const projectUrlsFilePath = path.join(workspaceFolder, projectName, projectName, 'urls.py');
+        let projectUrlsContent = fs.readFileSync(projectUrlsFilePath, 'utf8');
+        if (!projectUrlsContent.includes(`include('${appName}.urls')`)) {
+            projectUrlsContent = projectUrlsContent.replace(
+                'urlpatterns = [',
+                `from django.urls import include\n\nurlpatterns = [\n    path('${appName}/', include('${appName}.urls')),`
+            );
+            fs.writeFileSync(projectUrlsFilePath, projectUrlsContent, 'utf8');
+        }
+
+        vscode.window.showInformationMessage('index.html, views.py, and urls.py have been set up.');
+    } catch (error) {
+        vscode.window.showErrorMessage('Failed to set up index.html, views.py, and urls.py.');
+    }
+}
+
 // Function to set up Django workspace
 async function setupDjangoWorkspace(workspaceFolder: string, projectName: string, appName: string) {
     // Step 1: Check if Python is installed
@@ -73,15 +137,34 @@ async function setupDjangoWorkspace(workspaceFolder: string, projectName: string
         }
     }
 
-    // Step 4: Prompt to set up static files
-    const setupStatic = await vscode.window.showQuickPick(['Yes', 'No'], {
-        placeHolder: 'Do you want to set up static files in settings.py?',
-    });
+    // Step 4: Prompt user for static files setup
+    const setupStatic = await vscode.window.showQuickPick(
+        ['Yes', 'No'],
+        {
+            placeHolder: 'Do you want to set up static files in settings.py?',
+            ignoreFocusOut: true,
+        }
+    );
 
     if (setupStatic === 'Yes') {
-        setupStaticConfiguration(workspaceFolder, projectName);
-    } else {
+        await setupStaticConfiguration(workspaceFolder, projectName);
+    } else if (setupStatic === 'No') {
         vscode.window.showInformationMessage('Static files setup skipped.');
+    }
+
+    // Step 5: Prompt user for index.html, views, and urls setup
+    const setupIndex = await vscode.window.showQuickPick(
+        ['Yes', 'No'],
+        {
+            placeHolder: 'Do you want to set up index.html, views.py, and urls.py for your app?',
+            ignoreFocusOut: true,
+        }
+    );
+
+    if (setupIndex === 'Yes') {
+        await setupIndexHtml(workspaceFolder, projectName, appName);
+    } else if (setupIndex === 'No') {
+        vscode.window.showInformationMessage('Index, views, and urls setup skipped.');
     }
 }
 
