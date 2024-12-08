@@ -1,7 +1,13 @@
 {
-  "name": "workspace-config-assistant",
-  "displayName": "workspace-config-assistant",
+  "name": "django-config-assistant",
+  "displayName": "Django Config Assistant",
   "description": "",
+  "license": "MIT",
+  "publisher": "HansArcherDalubatan", 
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hanz-archer/VSCode-Workflow-Generator"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.95.0"
